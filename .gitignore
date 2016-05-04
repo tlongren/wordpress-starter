@@ -16,4 +16,3 @@ Thumbs.db
 
 # Wordpress
 wp-content/*
-!wp-content/themes/
