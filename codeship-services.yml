@@ -1,0 +1,26 @@
+version: 2
+services:
+  wordpress:
+    image: visiblevc/wordpress:latest
+    links:
+      - db
+    ports:
+      - 8080:80
+      - 443:443
+    volumes:
+      - ./data:/data
+      - ./wp-content:/app/wp-content
+    environment:
+      DB_NAME: wordpress
+      DB_PASS: root
+      PLUGINS: akismet
+  db:
+    image: mysql:5.7 # or mariadb
+    ports:
+      - 3306:3306
+    volumes:
+      - data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+volumes:
+  data: {}
