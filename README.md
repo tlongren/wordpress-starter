@@ -28,7 +28,7 @@ This repository does 2 things:
 
 If you don't plan to build the Docker image yourself, you shouldn't care for 1. We publish the image on Docker Hub and you can grab it directly from there. That's why you can safely remove the Dockerfile and run.sh.
 
-The reason we remove `.git`, `REAMDE.md` and `CHANGELOG.md` is because we assume you will start your own repository, named after your project. There is virtually no benefit keeping ties with our remote git repository.
+The reason we remove `.git`, `README.md` and `CHANGELOG.md` is because we assume you will start your own repository, named after your project. There is virtually no benefit keeping ties with our remote git repository.
 
 ---
 
@@ -49,11 +49,6 @@ The only thing you need to get started is a `docker-compose.yml` file:
 ```yml
 version: '2'
 services:
-  data:
-    image: busybox
-    volumes:
-      - /app
-      - /var/lib/mysql
   wordpress:
     image: visiblevc/wordpress:latest
     links:
@@ -67,6 +62,7 @@ services:
       - ./yourplugin:/app/wp-content/plugins/yourplugin # Plugin development
       - ./yourtheme:/app/wp-content/themes/yourtheme   # Theme development
     environment:
+      DB_HOST: db
       DB_NAME: wordpress
       DB_PASS: root # must match below
       PLUGINS: >-
@@ -88,6 +84,7 @@ volumes:
 
 ##### MySQL Credentials
 
+- hostname: `db` (can be changed with the `DB_HOST` environment variable)
 - username: `root`
 - password: `root` (can be changed with the `MYSQL_ROOT_PASSWORD` and `DB_PASS` environment variables)
 - database: `wordpress` (can be changed with the `DB_NAME` environment variable)
@@ -95,12 +92,17 @@ volumes:
 
 ##### WordPress Container Environment variables
 
+- `DB_HOST` (optional): Defaults to `db`
 - `DB_PASS` (required): Must match `MYSQL_ROOT_PASSWORD` of the mysql container
 - `DB_NAME` (optional): Defaults to `wordpress`
+- `DB_PREFIX` (optional): Defauts to `wp_`
 - `ADMIN_EMAIL` (optional): Defaults to `admin@${DB_NAME}.com`
 - `WP_DEBUG` (optional): Defaults to `false`
+- `WP_DEBUG_DISPLAY` (optional): Defaults to `false`
+- `WP_DEBUG_LOG` (optional): Defaults to `false`
 - `THEMES` (optional): Comma-separated list of themes you want to install.
 - `PLUGINS` (optional): Comma-separated list of plugins you want to install.
+- `MULTISITE` (optional): Set to `'true'` to enable multisite
 - `SEARCH_REPLACE` (optional): Comma-separated string in the form of `current-url,replacement-url`.
     - When defined, `current-url` will be replaced with `replacement-url` on build (useful for development environments utilizing a database copied from a live site).
     - **IMPORTANT NOTE:** If you are running Docker on Mac or PC (using Docker Machine), your replacement url MUST be the output of the following command: `echo $(docker-machine ip <your-machine-name>):8080`

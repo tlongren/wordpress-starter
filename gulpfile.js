@@ -56,11 +56,12 @@ gulp.task('deploy-assets', function (callback) {
 });
 
 gulp.task('clean', function () {
-  return gulp.src(distPath, {read: false})
+  return gulp.src([
+    distPath,
+    themePath + '/*.php'
+  ], {read: false})
     .pipe(clean({force: true}));
 });
-
-
 
 // Styles
 // ------

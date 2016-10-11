@@ -1,10 +1,14 @@
 #!/bin/bash
 
-[ "$DB_NAME" ]  || DB_NAME='wordpress'
-[ "$DB_PASS" ]  || DB_PASS='root'
-[ "$THEMES" ]   || THEMES='twentysixteen'
-[ "$WP_DEBUG" ] || WP_DEBUG='false'
-[ "$ADMIN_EMAIL" ] || ADMIN_EMAIL="admin@${DB_NAME}.com"
+DB_HOST=${DB_HOST:-'db'}
+DB_NAME=${DB_NAME:-'wordpress'}
+DB_PASS=${DB_PASS:-'root'}
+DB_PREFIX=${DB_PREFIX:-'wp_'}
+ADMIN_EMAIL=${ADMIN_EMAIL:-"admin@${DB_NAME}.com"}
+THEMES=${THEMES:-'twentysixteen'}
+WP_DEBUG_DISPLAY=${WP_DEBUG_DISPLAY:-'true'}
+WP_DEBUG_LOG=${WB_DEBUG_LOG:-'false'}
+WP_DEBUG=${WP_DEBUG:-'false'}
 [ "$SEARCH_REPLACE" ] && \
   BEFORE_URL=$(echo "$SEARCH_REPLACE" | cut -d ',' -f 1) && \
   AFTER_URL=$(echo "$SEARCH_REPLACE" | cut -d ',' -f 2) || \
@@ -26,9 +30,12 @@ core config:
   dbuser: root
   dbpass: $DB_PASS
   dbname: $DB_NAME
-  dbhost: db:3306
+  dbprefix: $DB_PREFIX
+  dbhost: $DB_HOST:3306
   extra-php: |
     define('WP_DEBUG', ${WP_DEBUG,,});
+    define('WP_DEBUG_LOG', ${WP_DEBUG_LOG,,});
+    define('WP_DEBUG_DISPLAY', ${WP_DEBUG_DISPLAY,,});
 
 core install:
   url: $([ "$AFTER_URL" ] && echo "$AFTER_URL" || echo localhost:8080)
@@ -54,7 +61,7 @@ fi
 # Wait for MySQL
 # --------------
 printf "=> Waiting for MySQL to initialize... \n"
-while ! mysqladmin ping --host=db --password=$DB_PASS --silent; do
+while ! mysqladmin ping --host=$DB_HOST --password=$DB_PASS --silent; do
   sleep 1
 done
 
@@ -112,9 +119,13 @@ fi
 # ---------
 if [ ! -f /app/.htaccess ]; then
   printf "=> Generating .htaccess file... "
-  sudo -u www-data wp rewrite flush --hard >/dev/null 2>&1 || \
-    ERROR $LINENO "Could not generate .htaccess file"
-  printf "Done!\n"
+  if [[ "$MULTISITE" == 'true' ]]; then
+    printf "Cannot generate .htaccess for multisite!"
+  else
+    sudo -u www-data wp rewrite flush --hard >/dev/null 2>&1 || \
+      ERROR $LINENO "Could not generate .htaccess file"
+    printf "Done!\n"
+  fi
 else
   printf "=> .htaccess exists. SKIPPING...\n"
 fi
@@ -153,6 +164,18 @@ else
 fi
 
 
+# Make multisite
+# ---------------
+printf "=> Turn wordpress multisite on... "
+if [ "$MULTISITE" == "true" ]; then
+  sudo -u www-data wp core multisite-convert --allow-root >/dev/null 2>&1 || \
+    ERROR $LINENO "Failed to turn on wordpress multisite"
+  printf "Done!\n"
+else
+  printf "Skip!\n"
+fi
+
+
 # Operations to perform on first build
 # ------------------------------------
 if [ -d /app/wp-content/plugins/akismet ]; then
@@ -166,7 +189,7 @@ if [ -d /app/wp-content/plugins/akismet ]; then
   while IFS=',' read -ra theme; do
     for i in "${!theme[@]}"; do
       REMOVE_LIST=( "${REMOVE_LIST[@]/${theme[$i]}}" )
-      THEME_LIST+="${theme[$i]}"
+      THEME_LIST+=("${theme[$i]}")
     done
     sudo -u www-data wp theme delete "${REMOVE_LIST[@]}"
   done <<< $THEMES
